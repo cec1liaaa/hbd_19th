@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>霓虹残影：2087 - Neon Echoes 2087</title>
+    <style>
+        :root {
+            --neon-pink: #ff00ff;
+            --neon-cyan: #00ffff;
+            --neon-green: #00ff88;
+            --dark-purple: #1a0033;
+            --retro-gray: #2d2d2d;
+            --crt-amber: #ffb000;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: crosshair; }
+
+        body {
+            font-family: 'Courier New', 'Fixedsys', monospace;
+            background-color: #050505;
+            color: var(--neon-green);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* CRT 扫描线特效 */
+        body::after {
+            content: " ";
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr 250px;
+            grid-template-rows: 60px minmax(0, 1fr) 245px;
+            height: 100vh;
+            gap: 10px;
+            padding: 15px;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+        }
+
+        /* 顶部导航 */
+        .header {
+            grid-column: 1 / 4;
+            border: 2px solid var(--neon-pink);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            background: rgba(255, 0, 255, 0.1);
+            box-shadow: 0 0 15px var(--neon-pink);
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            letter-spacing: 5px;
+            text-shadow: 2px 2px var(--dark-purple);
+        }
+
+        /* 角色展示区 */
+        .character-panel {
+            grid-row: 2;
+            border: 2px solid var(--neon-cyan);
+            background: rgba(0, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+        }
+
+        .pixel-canvas {
+            width: 200px;
+            height: 250px;
+            image-rendering: pixelated;
+            border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            background: #000;
+        }
+
+        .char-info {
+            margin-top: 15px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .char-name { color: var(--neon-pink); font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; }
+        .char-tag { font-size: 0.8rem; opacity: 0.8; }
+
+        /* 主对话区 */
+        .main-display {
+            grid-row: 2;
+            border: 2px solid var(--neon-green);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 25px;
+            overflow-y: auto;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dialogue-text {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 30px;
+            white-space: pre-wrap;
+        }
+
+        .choices-list {
+            margin-top: auto;
+            display: grid;
+            gap: 10px;
+        }
+
+        .choice-btn {
+            background: transparent;
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 12px;
+            text-align: left;
+            transition: 0.3s;
+            font-family: inherit;
+        }
+
+        .choice-btn:hover {
+            background: var(--neon-cyan);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-cyan);
+            transform: translateX(10px);
+        }
+
+        /* 数值面板 */
+        .stats-panel {
+            grid-row: 2;
+            border: 2px solid var(--crt-amber);
+            background: rgba(255, 176, 0, 0.05);
+            padding: 15px;
+        }
+
+        .stat-row { margin-bottom: 15px; }
+        .stat-label { font-size: 0.7rem; display: block; margin-bottom: 5px; color: var(--crt-amber); }
+        .stat-bar-bg { height: 6px; background: #222; border: 1px solid #444; }
+        .stat-bar-fill { height: 100%; transition: width 0.5s ease-out; }
+
+        /* 底部控制栏 */
+        .controls {
+            grid-column: 1 / 4;
+            grid-row: 3;
+            border: 2px solid #555;
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 10px;
+            padding: 10px;
+            min-height: 0;
+            background: rgba(10, 10, 16, 0.85);
+        }
+
+        .control-stack {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            min-height: 0;
+        }
+
+        .ctrl-btn {
+            background: var(--retro-gray);
+            border: 1px solid #777;
+            color: #fff;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            min-height: 0;
+            padding: 8px;
+        }
+
+        .ctrl-btn:hover { background: #444; }
+
+        .ai-console {
+            border: 1px solid var(--neon-cyan);
+            background: rgba(0, 255, 255, 0.04);
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            min-height: 0;
+            padding: 10px;
+            box-shadow: inset 0 0 14px rgba(0, 255, 255, 0.08);
+        }
+
+        .ai-console-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--neon-cyan);
+            font-size: 0.78rem;
+            letter-spacing: 2px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.35);
+        }
+
+        .ai-status {
+            color: var(--crt-amber);
+            letter-spacing: 0;
+            white-space: nowrap;
+        }
+
+        .ai-log {
+            min-height: 0;
+            overflow-y: auto;
+            padding: 8px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .ai-message {
+            border-left: 2px solid #555;
+            padding-left: 8px;
+            color: rgba(0, 255, 136, 0.82);
+            line-height: 1.4;
+        }
+
+        .ai-message.user {
+            border-left-color: var(--neon-pink);
+            color: rgba(255, 0, 255, 0.9);
+        }
+
+        .ai-message.assistant {
+            border-left-color: var(--neon-cyan);
+            color: rgba(0, 255, 255, 0.9);
+        }
+
+        .ai-input-row {
+            display: grid;
+            grid-template-columns: 1fr 130px;
+            gap: 8px;
+        }
+
+        .ai-input {
+            width: 100%;
+            min-height: 48px;
+            max-height: 80px;
+            resize: vertical;
+            background: rgba(0, 0, 0, 0.75);
+            border: 1px solid rgba(0, 255, 136, 0.45);
+            color: var(--neon-green);
+            font-family: inherit;
+            padding: 10px;
+            outline: none;
+        }
+
+        .ai-input:focus {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.35);
+        }
+
+        .ai-send-btn {
+            background: transparent;
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            font-family: inherit;
+            transition: 0.2s;
+        }
+
+        .ai-send-btn:hover:not(:disabled) {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-green);
+        }
+
+        .ai-send-btn:disabled,
+        .ai-input:disabled {
+            opacity: 0.55;
+            cursor: wait;
+        }
+
+        .choice-btn.ai-choice {
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+        }
+
+        .choice-btn.ai-choice:hover {
+            background: var(--neon-pink);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-pink);
+        }
+
+        /* 存档模态框 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #111;
+            border: 2px solid var(--neon-pink);
+            padding: 30px;
+            width: 500px;
+        }
+
+        .save-slot {
+            padding: 15px;
+            border: 1px solid #333;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .save-slot:hover { border-color: var(--neon-cyan); }
+
+        /* 结局特写 */
+        #ending-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 3000;
+            padding: 10%;
+            text-align: center;
+        }
+
+        .ending-title { font-size: 3rem; color: var(--neon-pink); margin-bottom: 20px; }
+        .ending-desc { font-size: 1.2rem; color: var(--neon-green); line-height: 2; }
+
+        @media (max-width: 900px) {
+            body { overflow: auto; height: auto; min-height: 100vh; }
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto minmax(380px, auto) auto auto;
+                height: auto;
+                min-height: 100vh;
+            }
+            .header,
+            .controls {
+                grid-column: 1;
+            }
+            .character-panel,
+            .main-display,
+            .stats-panel {
+                grid-row: auto;
+            }
+            .controls {
+                grid-row: auto;
+                grid-template-columns: 1fr;
+            }
+            .control-stack {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .ai-input-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header class="header">
+        <h1>V.A-11 ECHOES // NEON NIGHTS</h1>
+        <div id="clock">02:44 AM</div>
+    </header>
+
+    <aside class="character-panel">
+        <canvas id="charCanvas" class="pixel-canvas" width="200" height="250"></canvas>
+        <div class="char-info">
+            <div id="charName" class="char-name">---</div>
+            <div id="charTag" class="char-tag">---</div>
+        </div>
+    </aside>
+
+    <main class="main-display">
+        <div id="dialogue" class="dialogue-text">系统初始化中...</div>
+        <div id="choices" class="choices-list"></div>
+    </main>
+
+    <aside class="stats-panel">
+        <div style="margin-bottom: 20px; border-bottom: 1px solid var(--crt-amber); padding-bottom: 5px;">PSYCHE PROFILE</div>
+        <div class="stat-row">
+            <span class="stat-label">RATIONAL 理性 / EMOTIONAL 感性</span>
+            <div class="stat-bar-bg"><div id="stat-rat" class="stat-bar-fill" style="background: var(--neon-cyan)"></div></div>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">COOPERATIVE 合作 / OPPOSITIONAL 对抗</span>
+            <div class="stat-bar-bg"><div id="stat-coop" class="stat-bar-fill" style="background: var(--neon-green)"></div></div>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">EXPLORATORY 探索 / CAUTIOUS 保守</span>
+            <div class="stat-bar-bg"><div id="stat-exp" class="stat-bar-fill" style="background: var(--neon-pink)"></div></div>
+        </div>
+    </aside>
+
+    <footer class="controls">
+        <div class="control-stack">
+            <button class="ctrl-btn" onclick="saveGameModal()">SAVE DATA</button>
+            <button class="ctrl-btn" onclick="loadGameModal()">LOAD DATA</button>
+            <button class="ctrl-btn" onclick="resetGame()">REBOOT</button>
+            <button class="ctrl-btn" onclick="toggleAudio()" id="audio-toggle">AUDIO: OFF</button>
+        </div>
+        <section class="ai-console" aria-label="AI剧情聊天框">
+            <div class="ai-console-header">
+                <span>NEURAL CHATBOX // AI STORY CORE</span>
+                <span class="ai-status" id="aiStatus">LOCAL LINK READY</span>
+            </div>
+            <div class="ai-log" id="aiLog" aria-live="polite">
+                <div class="ai-message assistant">输入你想做的事、想问的人，或让某个角色继续说。AI 会把当前剧情延展开，不一定导向结局。</div>
+            </div>
+            <div class="ai-input-row">
+                <textarea class="ai-input" id="aiInput" placeholder="例如：我让Shadow把芯片插进吧台后的旧终端，并问她最害怕的是什么。"></textarea>
+                <button class="ai-send-btn" id="aiSendBtn" onclick="sendAiFromInput()">TRANSMIT</button>
+            </div>
+        </section>
+    </footer>
+</div>
+
+<div id="saveModal" class="modal">
+    <div class="modal-content">
+        <h2 style="margin-bottom:20px; color:var(--neon-cyan)">SELECT STORAGE SLOT</h2>
+        <div id="slots-container"></div>
+        <button class="choice-btn" style="width:100%; margin-top:20px;" onclick="closeModal()">BACK TO REALITY</button>
+    </div>
+</div>
+
+<div id="ending-overlay">
+    <div class="ending-title" id="e-title"></div>
+    <div class="ending-desc" id="e-desc"></div>
+    <button class="choice-btn" style="margin-top:50px;" onclick="location.reload()">RESTART CYCLE</button>
+</div>
+
+<script>
+// ==================== 游戏数据引擎 ====================
+const gameState = {
+    currentScene: 'intro',
+    stats: {
+        rational: 50, // 理性 vs 感性
+        coop: 50,     // 合作 vs 对抗
+        explore: 50   // 探索 vs 保守
+    },
+    flags: {},
+    audioEnabled: false,
+    ai: {
+        busy: false,
+        turns: [],
+        generatedCount: 0,
+        scenes: {}
+    }
+};
+
+const characters = {
+    'none': { name: 'CITY FEED', tag: '开放频道', color: '#00ff88' },
+    'bartender': { name: 'YOU (调酒师)', tag: 'Glitch City No.404', color: '#00ff88' },
+    'shadow': { name: 'SHADOW', tag: '叛逃黑客', color: '#ff00ff' },
+    'suit': { name: 'MR. SILVER', tag: '柯普工业执行官', color: '#00ffff' },
+    'aria': { name: 'ARIA', tag: '流亡AI / 剧情核心', color: '#ffb000' }
+};
+
+// ==================== 像素立绘绘制 ====================
+function drawPixelArt(type) {
+    const canvas = document.getElementById('charCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 200, 250);
+    
+    const p = 10; // 像素大小
+    
+    if (type === 'shadow') {
+        ctx.fillStyle = '#ff00ff';
+        ctx.fillRect(60, 40, 80, 80); // 头
+        ctx.fillStyle = '#000';
+        ctx.fillRect(70, 60, 20, 10); // 赛博眼
+        ctx.fillStyle = '#00ff88';
+        ctx.fillRect(110, 60, 20, 10);
+        ctx.fillStyle = '#330033';
+        ctx.fillRect(40, 120, 120, 100); // 连帽衫
+    } else if (type === 'suit') {
+        ctx.fillStyle = '#00ffff';
+        ctx.fillRect(70, 30, 60, 80); // 头
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(40, 110, 120, 120); // 衬衫
+        ctx.fillStyle = '#000';
+        ctx.fillRect(90, 110, 20, 120); // 领带
+    } else if (type === 'bartender') {
+        ctx.fillStyle = '#00ff88';
+        ctx.fillRect(70, 50, 60, 60);
+        ctx.fillStyle = '#222';
+        ctx.fillRect(40, 110, 120, 120); // 围裙
+    } else if (type === 'aria') {
+        ctx.fillStyle = '#ffb000';
+        ctx.fillRect(70, 35, 60, 60);
+        ctx.fillStyle = '#00ffff';
+        ctx.fillRect(80, 55, 10, 10);
+        ctx.fillRect(110, 55, 10, 10);
+        ctx.fillStyle = '#ff00ff';
+        ctx.fillRect(50, 115, 100, 15);
+        ctx.fillStyle = '#00ff88';
+        for (let y = 140; y < 230; y += 20) {
+            ctx.fillRect(65, y, 70, 8);
+        }
+    } else {
+        ctx.fillStyle = '#00ff88';
+        ctx.fillRect(55, 65, 90, 90);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(75, 95, 50, 10);
+        ctx.fillStyle = '#00ffff';
+        ctx.fillRect(35, 180, 130, 10);
+    }
+}
+
+// ==================== 剧情脚本 ====================
+const story = {
+    // --- 第一章：雨、霓虹与旧酒瓶 ---
+    intro: {
+        char: 'bartender',
+        text: "2087年，新城市（Neo-City）。\n\n雨水混合着废气和廉价合成色素，在柏油路上汇聚成彩虹色的油污。窗外的霓虹灯牌正在由于电力不稳而疯狂闪烁，发出令人牙酸的嗡嗡声。\n\n你推开“Echoes”酒吧的大门，这里的空气混合着机油味、合成烟草和一种名为‘赛博寂寞’的气味。你拿起那块磨损的抹布，准备开始今晚的工作。",
+        choices: [
+            { text: "【理性】检查库存，校准自动调酒机的压力平衡。", next: 'calm_start', effect: { rational: 10 } },
+            { text: "【感性】放一盘旧磁带，让忧郁的合成器乐曲填满空间。", next: 'moody_start', effect: { rational: -10 } }
+        ]
+    },
+
+    calm_start: {
+        char: 'bartender',
+        text: "在这个时代，效率就是生命。你一丝不苟地检查着输液管：酒精、糖浆、纳米冷却液。一切都像这城市的底层逻辑一样冰冷而精准。\n\n门上的风铃响了。那是重力传感器的机械音，预示着一位带着麻烦的访客。",
+        choices: [{ text: "等待访客开口。", next: 'meet_shadow', effect: { explore: -5 } }]
+    },
+
+    moody_start: {
+        char: 'bartender',
+        text: "音乐是旧时代的幽灵，在2087年这种东西显得格格不入。音符在磁头间跳跃，带着一种低保真的温暖。\n\n“这种品味现在可不多见了，”一个沙哑的声音从阴影里传来，带着被电子烟草熏坏的质感。",
+        choices: [{ text: "“在这个城市，旧东西往往比新东西更可靠。”", next: 'meet_shadow', effect: { explore: 10 } }]
+    },
+
+    // --- 第二章：数据的幽灵 ---
+    meet_shadow: {
+        char: 'shadow',
+        text: "“Shadow”坐到了吧台前。她穿着一件几乎要褪色的防辐射风衣，脖子后的神经接口（Neural Link）正冒着微弱的蓝烟，像是刚经历了过载烧毁。\n\n“给我一杯‘故障艺术’，”她疲惫地撑着额头，“还要一个能让追踪器失效的静电屏蔽区。别问为什么，问就是我偷了不该偷的东西。”",
+        choices: [
+            { text: "【合作】“躲到吧台后面去，这杯酒算我请，别出声。”", next: 'shadow_talk', effect: { coop: 15, explore: 5 } },
+            { text: "【对抗】“酒吧不负责洗白。交出你那该死的数据包，我就帮你。”", next: 'shadow_pressure', effect: { coop: -15, rational: 10 } }
+        ]
+    },
+
+    shadow_talk: {
+        char: 'shadow',
+        text: "她滑进吧台阴影处，眼神中闪过一丝感激，但随即被警惕取代。“这是柯普工业的‘意识上传’原型数据。他们试图把那些欠债者的灵魂数字化，变成永远工作的算法。我是他们唯一的‘实验漏洞’。”\n\n她把一枚闪烁着红光的存储芯片推到你面前。“如果你拿着它，你就是下一个目标。”",
+        choices: [
+            { text: "“我只是个调酒师，但这听起来像是个值得参与的麻烦。”", next: 'suit_arrival', effect: { explore: 15, coop: 10 } },
+            { text: "“把它藏在酒库里，我们得想办法把它处理掉。”", next: 'suit_arrival', effect: { rational: 10, explore: -5 } }
+        ]
+    },
+
+    shadow_pressure: {
+        char: 'shadow',
+        text: "她冷笑一声，义眼底部的红光变得刺眼。“你和外面那些秃鹫没什么区别。但我没得选，对吧？数据给你，但如果你处理不了它，我们都会变成电子废料。”\n\n她重重地把芯片拍在桌上，这时，门外传来了沉重的装甲靴声。",
+        choices: [{ text: "迎接那个不可避免的敲门声。", next: 'suit_arrival', effect: { coop: -10 } }]
+    },
+
+    // --- 第三章：权力的倒影 ---
+    suit_arrival: {
+        char: 'suit',
+        text: "门被粗暴地推开了。Silver先生走了进来，他的西装上反射着冰冷的钛金光泽，身后跟着两名武装无人机。空气瞬间变得干燥，像是要自燃。\n\n“晚安，公民。”他微笑着，笑容却没有任何温度。“我们在寻找一份迷失的企业资产。那是一个年轻、迷茫、且充满了数据窃取倾向的女性。我想你应该见过她？”",
+        choices: [
+            { text: "【保守】“我这里只接待顾客，不接待非法分子。”（假装没见过）", next: 'suit_lying', effect: { rational: 15, explore: -10 } },
+            { text: "【对抗】“你是来喝酒的，还是来打扰我工作的？”", next: 'suit_confront', effect: { coop: -20, explore: 10 } }
+        ]
+    },
+
+    suit_lying: {
+        char: 'suit',
+        text: "Silver先生环视了一圈酒吧。他修长的手指划过桌面，留下了一道浅浅的划痕。“有趣。但我的扫描仪显示，这里的热感分布在三十秒前发生了异常变化。”\n\n他掏出一叠高额的电子信用券，放在吧台上。“这些钱足够你买下整条街的酒吧。只要你告诉我，她在哪里。”",
+        choices: [
+            { text: "【感性】保持沉默，不动声色地握紧了吧台下的开关。", next: 'climax_choice', effect: { rational: -15, coop: 10 } },
+            { text: "【理性】“她在酒窖。钱归我，麻烦归你。”", next: 'CALC_ENDING', effect: { rational: 25, coop: 20 } }
+        ]
+    },
+
+    suit_confront: {
+        char: 'suit',
+        text: "“我喜欢你的胆量，”Silver先生的手指变成了危险的多功能终端接口，“但我更喜欢服从。如果你坚持要保护那个女孩，那么这家店，连同你的记忆备份，都会在五分钟内被格式化。”",
+        choices: [
+            { text: "“那就试试看，谁的防御矩阵更厚。”", next: 'climax_choice', effect: { coop: -25, explore: 20 } },
+            { text: "（意识到实力悬殊）“等等，我们可以谈谈条件。”", next: 'suit_lying', effect: { rational: 10 } }
+        ]
+    },
+
+    // --- 第四章：终局时刻 ---
+    climax_choice: {
+        char: 'bartender',
+        text: "冷汗顺着你的脊背流下。Shadow在阴影中注视着你，Silver在霓虹灯下审视着你。\n\n此时，那枚存储芯片正静静地躺在你的口袋里。它是改变世界的钥匙，还是通往地狱的单程票？",
+        choices: [
+            { text: "【探索】开启酒吧的公共广播系统，将数据包全城公开放映！", next: 'CALC_ENDING', effect: { explore: 30, coop: -10 } },
+            { text: "【感性】掩护Shadow逃走，自己留下来面对企业的怒火。", next: 'CALC_ENDING', effect: { coop: 30, rational: -20 } },
+            { text: "【理性】在混乱中销毁芯片，让这个秘密永远沉入雨中。", next: 'CALC_ENDING', effect: { rational: 30, explore: -20 } }
+        ]
+    }
+};
+
+// ==================== 结局详细文案扩充 ====================
+function calculateEnding() {
+    const s = gameState.stats;
+    let title, desc;
+
+    // 结局判断逻辑分支
+    if (s.explore > 70 && s.coop > 50) {
+        title = "结局：【数字普罗米修斯】";
+        desc = "你按下了广播键。瞬间，成千上万个沉睡在城市角落的意识被唤醒了。柯普工业的黑暗实验在全息屏幕上滚动，愤怒的民众涌上街头。你在混乱中消失了，但Echoes酒吧成了传说中的革命发源地。世界不再整洁，但至少它属于人类。";
+    } else if (s.rational > 75) {
+        title = "结局：【黄金囚笼的领主】";
+        desc = "你选择了最现实的道路。Silver先生信守诺言，给了你一辈子花不完的信用点。你离开了下层区，搬进了拥有人工阳光的顶层公寓。你偶尔会想起那个雨夜和那个叫Shadow的女孩，但随即便被昂贵的合成威士忌麻痹了神经。在这个世界，清醒才是最痛苦的。";
+    } else if (s.coop > 70 && s.rational < 50) {
+        title = "结局：【雨中的最后守望】";
+        desc = "你牺牲了酒吧的一切，掩护Shadow消失在地下水道。你被柯普工业秘密关押，意识被剥离并投入了无限循环的虚拟监狱。但在那片数字荒原里，你依然能看到Shadow发送来的微弱脉冲信号——她在外面继续战斗。你失去了自由，但保住了灵魂。";
+    } else {
+        title = "结局：【霓虹下的静默者】";
+        desc = "冲突平息了。芯片被毁，Shadow逃走了，Silver撤退了。你依然在Echoes酒吧擦着杯子，一切似乎都没变，只是酒吧的生意冷清了许多。在这座城市，英雄和叛徒都会被时间抹平，只有雨水依旧。你只是一个调酒师，见证了历史，却无法改变它。";
+    }
+
+    document.getElementById('e-title').innerText = title;
+    document.getElementById('e-desc').innerText = desc;
+    document.getElementById('ending-overlay').style.display = 'block';
+}
+
+// ==================== 核心逻辑 ====================
+let typeTimer;
+
+function getEndingGateScene() {
+    return {
+        char: 'aria',
+        text: "最终审计程序已经在后台点亮，但城市还没有把话说完。\n\n你可以查看当前命运的结算，也可以暂缓结局，让AI剧情核心把这个夜晚继续往更深处推。",
+        choices: [
+            {
+                text: "暂缓结局，接入AI剧情核心。",
+                aiPrompt: "玩家拒绝让故事在这里结算。请从当前危机之后继续开放剧情，保留危险、悬念和角色张力。"
+            },
+            { text: "查看当前可能结局。", action: 'ending' }
+        ]
+    };
+}
+
+function getActiveScene() {
+    if (gameState.currentScene === 'CALC_ENDING') return getEndingGateScene();
+    return story[gameState.currentScene] || story.intro;
+}
+
+function applyEffect(effect = {}) {
+    const allowed = ['rational', 'coop', 'explore'];
+    allowed.forEach(key => {
+        if (typeof effect[key] === 'number') {
+            gameState.stats[key] = Math.max(0, Math.min(100, gameState.stats[key] + effect[key]));
+        }
+    });
+}
+
+function typeSceneText(text) {
+    const diagDiv = document.getElementById('dialogue');
+    clearTimeout(typeTimer);
+    diagDiv.textContent = "";
+
+    let i = 0;
+    function type() {
+        if (i < text.length) {
+            diagDiv.textContent += text.charAt(i);
+            i++;
+            typeTimer = setTimeout(type, 15);
+        }
+    }
+    type();
+}
+
+function updateDisplay() {
+    const scene = getActiveScene();
+    const char = characters[scene.char] || characters.none;
+    document.getElementById('charName').innerText = char.name;
+    document.getElementById('charTag').innerText = char.tag;
+    document.getElementById('charName').style.color = char.color;
+    drawPixelArt(scene.char);
+
+    typeSceneText(scene.text);
+
+    const choiceDiv = document.getElementById('choices');
+    choiceDiv.innerHTML = "";
+    scene.choices.forEach(c => addChoiceButton(choiceDiv, c));
+
+    if (gameState.currentScene !== 'CALC_ENDING') {
+        addChoiceButton(choiceDiv, {
+            text: "接入AI剧情核心，让这一幕自由发展。",
+            aiPrompt: "玩家主动接入AI剧情核心。请基于当前场景继续写，不急着结局，给出新的冲突、秘密或角色反应。",
+            ai: true
+        });
+    }
+
+    updateStatsDisplay();
+}
+
+function addChoiceButton(container, choice) {
+    const btn = document.createElement('button');
+    btn.className = choice.ai || choice.aiPrompt ? 'choice-btn ai-choice' : 'choice-btn';
+    btn.innerText = choice.text;
+    btn.onclick = () => selectChoice(choice);
+    container.appendChild(btn);
+}
+
+function selectChoice(choice) {
+    if (choice.action === 'ending') {
+        calculateEnding();
+        return;
+    }
+
+    applyEffect(choice.effect);
+
+    if (choice.aiPrompt) {
+        requestAiContinuation(choice.aiPrompt);
+        return;
+    }
+
+    gameState.currentScene = choice.next;
+    updateDisplay();
+}
+
+function updateStatsDisplay() {
+    document.getElementById('stat-rat').style.width = gameState.stats.rational + '%';
+    document.getElementById('stat-coop').style.width = gameState.stats.coop + '%';
+    document.getElementById('stat-exp').style.width = gameState.stats.explore + '%';
+}
+
+function buildStorySnapshot() {
+    const scene = getActiveScene();
+    return {
+        sceneId: gameState.currentScene,
+        character: scene.char,
+        sceneText: scene.text,
+        visibleChoices: scene.choices.map(choice => choice.text),
+        stats: gameState.stats,
+        flags: gameState.flags,
+        recentTurns: gameState.ai.turns.slice(-8)
+    };
+}
+
+function appendAiLog(role, text) {
+    const log = document.getElementById('aiLog');
+    const line = document.createElement('div');
+    line.className = `ai-message ${role}`;
+    line.textContent = text;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+}
+
+function setAiBusy(isBusy, statusText) {
+    gameState.ai.busy = isBusy;
+    document.getElementById('aiInput').disabled = isBusy;
+    document.getElementById('aiSendBtn').disabled = isBusy;
+    document.getElementById('aiStatus').innerText = statusText || (isBusy ? 'AI LINKING...' : 'LOCAL LINK READY');
+}
+
+function sendAiFromInput() {
+    const input = document.getElementById('aiInput');
+    const text = input.value.trim();
+    if (!text || gameState.ai.busy) return;
+    input.value = "";
+    requestAiContinuation(text);
+}
+
+async function requestAiContinuation(playerInput) {
+    if (gameState.ai.busy) return;
+
+    appendAiLog('user', `YOU > ${playerInput}`);
+    gameState.ai.turns.push({ role: 'user', content: playerInput });
+    setAiBusy(true, 'UPLINKING...');
+
+    try {
+        const response = await fetch('/api/story-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                playerInput,
+                snapshot: buildStorySnapshot()
+            })
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+            throw new Error(payload.error || 'AI剧情核心暂时没有回应。');
+        }
+
+        const aiScene = normalizeAiScene(payload);
+        const sceneId = `ai_${Date.now()}_${gameState.ai.generatedCount++}`;
+        story[sceneId] = aiScene;
+        gameState.ai.scenes[sceneId] = aiScene;
+        gameState.currentScene = sceneId;
+        gameState.ai.turns.push({ role: 'assistant', content: aiScene.text });
+        appendAiLog('assistant', `AI > ${payload.logline || '新剧情片段已写入主显示屏。'}`);
+        updateDisplay();
+        setAiBusy(false, 'AI LINK READY');
+    } catch (error) {
+        appendAiLog('assistant', `ERROR > ${error.message}`);
+        setAiBusy(false, 'LOCAL LINK ERROR');
+    }
+}
+
+function normalizeAiScene(payload) {
+    const char = characters[payload.char] ? payload.char : 'aria';
+    const text = typeof payload.text === 'string' && payload.text.trim()
+        ? payload.text.trim()
+        : "屏幕闪烁了一下。城市的噪声短暂吞掉了回答，只留下一个新的机会。";
+
+    const rawChoices = Array.isArray(payload.choices) ? payload.choices : [];
+    const choices = rawChoices
+        .slice(0, 4)
+        .map(choice => ({
+            text: String(choice.text || '继续追问。').slice(0, 90),
+            aiPrompt: String(choice.prompt || choice.text || '继续这一幕。'),
+            effect: sanitizeEffect(choice.effect)
+        }));
+
+    if (choices.length === 0) {
+        choices.push(
+            { text: "继续追问这个秘密。", aiPrompt: "玩家继续追问刚才暴露出的秘密。" },
+            { text: "换个角度行动。", aiPrompt: "玩家不正面回答，尝试用一个意外行动改变局势。" }
+        );
+    }
+
+    if (payload.endingReady) {
+        choices.push({ text: "查看当前可能结局。", action: 'ending' });
+    }
+
+    return { char, text, choices };
+}
+
+function sanitizeEffect(effect = {}) {
+    const clean = {};
+    ['rational', 'coop', 'explore'].forEach(key => {
+        if (typeof effect[key] === 'number') {
+            clean[key] = Math.max(-20, Math.min(20, Math.round(effect[key])));
+        }
+    });
+    return clean;
+}
+
+function ensureAiState() {
+    if (!gameState.ai) {
+        gameState.ai = { busy: false, turns: [], generatedCount: 0, scenes: {} };
+    }
+    gameState.ai.busy = false;
+    gameState.ai.turns = Array.isArray(gameState.ai.turns) ? gameState.ai.turns : [];
+    gameState.ai.generatedCount = Number.isFinite(gameState.ai.generatedCount) ? gameState.ai.generatedCount : 0;
+    gameState.ai.scenes = gameState.ai.scenes && typeof gameState.ai.scenes === 'object' ? gameState.ai.scenes : {};
+    Object.assign(story, gameState.ai.scenes);
+}
+
+function initAiConsole() {
+    const input = document.getElementById('aiInput');
+    input.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+            event.preventDefault();
+            sendAiFromInput();
+        }
+    });
+}
+
+// ==================== 音效与合成器 (Web Audio API) ====================
+let audioCtx;
+function toggleAudio() {
+    if (!gameState.audioEnabled) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        startSynth();
+        document.getElementById('audio-toggle').innerText = "AUDIO: ON";
+    } else {
+        audioCtx.close();
+        document.getElementById('audio-toggle').innerText = "AUDIO: OFF";
+    }
+    gameState.audioEnabled = !gameState.audioEnabled;
+}
+
+function startSynth() {
+    // 简单的环境音效循环
+    function playOsc(freq, time, vol) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(vol, time + 2);
+        gain.gain.linearRampToValueAtTime(0, time + 4);
+        osc.start(time);
+        osc.stop(time + 5);
+    }
+    setInterval(() => {
+        if (gameState.audioEnabled) {
+            playOsc(110 + Math.random()*20, audioCtx.currentTime, 0.1);
+            playOsc(220 + Math.random()*10, audioCtx.currentTime + 1, 0.05);
+        }
+    }, 4000);
+}
+
+// ==================== 存档管理 ====================
+function saveGameModal() {
+    const modal = document.getElementById('saveModal');
+    const container = document.getElementById('slots-container');
+    container.innerHTML = "";
+    for(let i=1; i<=6; i++) {
+        const data = localStorage.getItem('save_'+i);
+        const div = document.createElement('div');
+        div.className = 'save-slot';
+        div.innerHTML = `<span>SLOT ${i} ${data ? '[DATA RECORDED]' : '[EMPTY]'}</span>`;
+        const btn = document.createElement('button');
+        btn.className = 'choice-btn';
+        btn.innerText = "OVERWRITE";
+        btn.onclick = () => {
+            localStorage.setItem('save_'+i, JSON.stringify(gameState));
+            saveGameModal();
+        };
+        div.appendChild(btn);
+        container.appendChild(div);
+    }
+    modal.style.display = 'flex';
+}
+
+function loadGameModal() {
+    const modal = document.getElementById('saveModal');
+    const container = document.getElementById('slots-container');
+    container.innerHTML = "";
+    for(let i=1; i<=6; i++) {
+        const data = localStorage.getItem('save_'+i);
+        const div = document.createElement('div');
+        div.className = 'save-slot';
+        div.innerHTML = `<span>SLOT ${i} ${data ? '[DATA RECORDED]' : '[EMPTY]'}</span>`;
+        if (data) {
+            const btn = document.createElement('button');
+            btn.className = 'choice-btn';
+            btn.innerText = "RECOVER";
+            btn.onclick = () => {
+                Object.assign(gameState, JSON.parse(data));
+                ensureAiState();
+                document.getElementById('ending-overlay').style.display = 'none';
+                updateDisplay();
+                closeModal();
+            };
+            div.appendChild(btn);
+        }
+        container.appendChild(div);
+    }
+    modal.style.display = 'flex';
+}
+
+function closeModal() { document.getElementById('saveModal').style.display = 'none'; }
+function resetGame() {
+    if(confirm("REBOOT SYSTEM?")) {
+        gameState.currentScene = 'intro';
+        gameState.stats = { rational: 50, coop: 50, explore: 50 };
+        gameState.flags = {};
+        gameState.ai = { busy: false, turns: [], generatedCount: 0, scenes: {} };
+        document.getElementById('ending-overlay').style.display = 'none';
+        document.getElementById('aiLog').innerHTML = '<div class="ai-message assistant">输入你想做的事、想问的人，或让某个角色继续说。AI 会把当前剧情延展开，不一定导向结局。</div>';
+        setAiBusy(false, 'LOCAL LINK READY');
+        updateDisplay();
+    }
+}
+
+// 初始化
+window.onload = () => {
+    ensureAiState();
+    initAiConsole();
+    updateDisplay();
+};
+setInterval(() => {
+    const now = new Date();
+    document.getElementById('clock').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}, 1000);
+
+</script>
+</body>
+</html>
