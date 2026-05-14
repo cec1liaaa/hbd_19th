@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>霓虹残影：2087 - Neon Echoes 2087</title>
+    <style>
+        :root {
+            --neon-pink: #ff00ff;
+            --neon-cyan: #00ffff;
+            --neon-green: #00ff88;
+            --dark-purple: #1a0033;
+            --retro-gray: #2d2d2d;
+            --crt-amber: #ffb000;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body { width: 100%; height: 100%; }
+
+        body {
+            font-family: 'Courier New', 'Fixedsys', monospace;
+            background-color: #050505;
+            color: var(--neon-green);
+            overflow: hidden;
+            cursor: crosshair;
+        }
+
+        /* CRT 扫描线特效 */
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background:
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 280px 1fr 260px;
+            grid-template-rows: 70px 1fr 180px;
+            height: 100vh;
+            gap: 12px;
+            padding: 12px;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+        }
+
+        /* ===== 顶部导航 ===== */
+        .header {
+            grid-column: 1 / 4;
+            border: 2px solid var(--neon-pink);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            background: linear-gradient(90deg, rgba(255,0,255,0.1), rgba(0,255,255,0.1));
+            box-shadow: 0 0 20px var(--neon-pink), inset 0 0 10px rgba(255,0,255,0.1);
+            position: relative;
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-size: 1.1rem;
+            letter-spacing: 6px;
+            text-shadow: 0 0 10px var(--neon-pink);
+        }
+
+        .clock {
+            font-size: 0.9rem;
+            color: var(--crt-amber);
+            text-shadow: 0 0 8px var(--crt-amber);
+            letter-spacing: 2px;
+        }
+
+        /* ===== 角色展示区 ===== */
+        .character-panel {
+            grid-row: 2;
+            border: 2px solid var(--neon-cyan);
+            background: linear-gradient(180deg, rgba(0,255,255,0.08), rgba(0,255,255,0.02));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 18px;
+            position: relative;
+            box-shadow: inset 0 0 15px rgba(0,255,255,0.1);
+        }
+
+        .pixel-canvas {
+            width: 180px;
+            height: 240px;
+            image-rendering: pixelated;
+            border: 2px solid var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0,255,255,0.3), inset 0 0 15px rgba(0,255,255,0.1);
+            background: linear-gradient(135deg, #000 0%, #0a0a0a 100%);
+        }
+
+        .char-info {
+            margin-top: 15px;
+            text-align: center;
+            width: 100%;
+            border-top: 1px solid rgba(0,255,255,0.3);
+            padding-top: 10px;
+        }
+
+        .char-name {
+            color: var(--neon-pink);
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 3px;
+            text-shadow: 0 0 8px var(--neon-pink);
+            letter-spacing: 2px;
+        }
+        .char-tag {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            color: var(--neon-cyan);
+        }
+
+        /* ===== 主对话区 ===== */
+        .main-display {
+            grid-row: 2;
+            border: 2px solid var(--neon-green);
+            background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(5,5,20,0.8));
+            padding: 25px;
+            overflow-y: auto;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-shadow: inset 0 0 20px rgba(0,255,136,0.05), 0 0 20px rgba(0,255,136,0.2);
+            scrollbar-width: thin;
+            scrollbar-color: var(--neon-green) transparent;
+        }
+
+        .main-display::-webkit-scrollbar {
+            width: 8px;
+        }
+        .main-display::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .main-display::-webkit-scrollbar-thumb {
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+
+        .dialogue-text {
+            font-size: 1rem;
+            line-height: 1.8;
+            margin-bottom: 25px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            text-shadow: 0 0 5px rgba(0,255,136,0.3);
+            min-height: 80px;
+        }
+
+        .choices-list {
+            margin-top: auto;
+            display: grid;
+            gap: 8px;
+        }
+
+        .choice-btn {
+            background: transparent;
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 12px 15px;
+            text-align: left;
+            transition: all 0.2s;
+            font-family: inherit;
+            font-size: 0.95rem;
+            cursor: pointer;
+            text-shadow: 0 0 5px rgba(0,255,255,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .choice-btn::before {
+            content: '> ';
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .choice-btn:hover {
+            background: rgba(0,255,255,0.15);
+            color: var(--neon-cyan);
+            box-shadow: 0 0 15px var(--neon-cyan), inset 0 0 10px rgba(0,255,255,0.1);
+            transform: translateX(8px);
+        }
+
+        .choice-btn:hover::before {
+            opacity: 1;
+        }
+
+        /* ===== 数值面板 ===== */
+        .stats-panel {
+            grid-row: 2;
+            border: 2px solid var(--crt-amber);
+            background: linear-gradient(180deg, rgba(255,176,0,0.08), rgba(255,176,0,0.02));
+            padding: 18px;
+            position: relative;
+            box-shadow: inset 0 0 15px rgba(255,176,0,0.1);
+            overflow-y: auto;
+        }
+
+        .stats-title {
+            font-size: 0.75rem;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--crt-amber);
+            padding-bottom: 8px;
+            color: var(--crt-amber);
+            text-shadow: 0 0 8px var(--crt-amber);
+        }
+
+        .stat-row {
+            margin-bottom: 18px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            display: block;
+            margin-bottom: 6px;
+            color: var(--crt-amber);
+            letter-spacing: 1px;
+            text-shadow: 0 0 4px rgba(255,176,0,0.3);
+        }
+
+        .stat-ratio {
+            font-size: 0.65rem;
+            color: var(--neon-cyan);
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+
+        .stat-bar-bg {
+            height: 8px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #333;
+            overflow: hidden;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
+        }
+
+        .stat-bar-fill {
+            height: 100%;
+            transition: width 0.4s ease-out;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        /* ===== 底部控制栏 ===== */
+        .controls {
+            grid-column: 1 / 4;
+            grid-row: 3;
+            border: 2px solid #555;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            padding: 12px;
+            background: linear-gradient(90deg, rgba(100,0,100,0.1), rgba(0,100,100,0.1));
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .ctrl-btn {
+            background: var(--retro-gray);
+            border: 1px solid #666;
+            color: #fff;
+            font-family: inherit;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: all 0.2s;
+            cursor: pointer;
+            font-size: 0.85rem;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        .ctrl-btn:hover {
+            background: #555;
+            box-shadow: 0 0 10px rgba(0,255,255,0.3);
+            border-color: var(--neon-cyan);
+        }
+
+        /* ===== 模态框 ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a0033, #330066);
+            border: 3px solid var(--neon-pink);
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 0 30px var(--neon-pink);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 1.2rem;
+            color: var(--neon-cyan);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px var(--neon-cyan);
+            border-bottom: 2px solid var(--neon-pink);
+            padding-bottom: 10px;
+        }
+
+        .save-slot {
+            padding: 15px;
+            border: 1px solid rgba(0,255,255,0.3);
+            margin-bottom: 12px;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+            gap: 10px;
+        }
+
+        .save-slot:hover {
+            border-color: var(--neon-cyan);
+            background: rgba(0,255,255,0.1);
+            box-shadow: 0 0 10px rgba(0,255,255,0.2);
+        }
+
+        .save-slot-info {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+
+        .save-slot-btn {
+            background: var(--neon-cyan);
+            color: #000;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        /* ===== 结局屏幕 ===== */
+        #ending-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #000 0%, #1a0033 50%, #000 100%);
+            z-index: 3000;
+            padding: 10%;
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        #ending-overlay.active {
+            display: flex;
+        }
+
+        .ending-title {
+            font-size: 2.5rem;
+            color: var(--neon-pink);
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px var(--neon-pink);
+            letter-spacing: 3px;
+        }
+
+        .ending-desc {
+            font-size: 1.1rem;
+            color: var(--neon-green);
+            line-height: 2;
+            max-width: 700px;
+            text-shadow: 0 0 10px rgba(0,255,136,0.3);
+            margin-bottom: 40px;
+        }
+
+        .ending-stats {
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+            color: var(--crt-amber);
+            text-shadow: 0 0 8px var(--crt-amber);
+        }
+
+        .ending-btn {
+            background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan));
+            color: #000;
+            border: none;
+            padding: 12px 30px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            box-shadow: 0 0 20px var(--neon-pink);
+            transition: all 0.3s;
+        }
+
+        .ending-btn:hover {
+            box-shadow: 0 0 30px var(--neon-pink), 0 0 15px var(--neon-cyan);
+            transform: scale(1.05);
+        }
+
+        /* ===== 音乐控制 ===== */
+        #audio-status {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid var(--neon-cyan);
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            z-index: 500;
+            text-shadow: 0 0 5px var(--neon-cyan);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 顶部导航 -->
+    <header class="header">
+        <h1>⚡ V.A-11 ECHOES // NEON NIGHTS ⚡</h1>
+        <div class="clock" id="clock">02:44 AM</div>
+    </header>
+
+    <!-- 左侧角色面板 -->
+    <aside class="character-panel">
+        <canvas id="charCanvas" class="pixel-canvas" width="180" height="240"></canvas>
+        <div class="char-info">
+            <div id="charName" class="char-name">SYSTEM READY</div>
+            <div id="charTag" class="char-tag">Initializing Neural Link...</div>
+        </div>
+    </aside>
+
+    <!-- 中间主对话区 -->
+    <main class="main-display">
+        <div id="dialogue" class="dialogue-text">系统初始化中...\n加载神经接口...\n连接心理档案数据库...\n\n准备就绪。</div>
+        <div id="choices" class="choices-list"></div>
+    </main>
+
+    <!-- 右侧统计面板 -->
+    <aside class="stats-panel">
+        <div class="stats-title">PSYCHE PROFILE v2.087</div>
+
+        <div class="stat-row">
+            <span class="stat-label">COGNITION AXIS / 认知轴</span>
+            <div class="stat-ratio">理性 <span id="rat-pct">50</span>% / 感性 <span id="emo-pct">50</span>%</div>
+            <div class="stat-bar-bg"><div id="stat-rat" class="stat-bar-fill" style="background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green)); width: 50%"></div></div>
+        </div>
+
+        <div class="stat-row">
+            <span class="stat-label">SOCIAL AXIS / 社交轴</span>
+            <div class="stat-ratio">合作 <span id="coop-pct">50</span>% / 对抗 <span id="opp-pct">50</span>%</div>
+            <div class="stat-bar-bg"><div id="stat-coop" class="stat-bar-fill" style="background: linear-gradient(90deg, var(--neon-green), var(--neon-pink)); width: 50%"></div></div>
+        </div>
+
+        <div class="stat-row">
+            <span class="stat-label">RISK AXIS / 风险轴</span>
+            <div class="stat-ratio">探索 <span id="exp-pct">50</span>% / 保守 <span id="cau-pct">50</span>%</div>
+            <div class="stat-bar-bg"><div id="stat-exp" class="stat-bar-fill" style="background: linear-gradient(90deg, var(--neon-pink), var(--crt-amber)); width: 50%"></div></div>
+        </div>
+    </aside>
+
+    <!-- 底部控制栏 -->
+    <footer class="controls">
+        <button class="ctrl-btn" onclick="saveGameModal()">💾 SAVE</button>
+        <button class="ctrl-btn" onclick="loadGameModal()">📂 LOAD</button>
+        <button class="ctrl-btn" onclick="toggleAudio()" id="audio-toggle">🎵 AUDIO: OFF</button>
+        <button class="ctrl-btn" onclick="resetGame()">🔄 REBOOT</button>
+    </footer>
+</div>
+
+<!-- 存档模态框 -->
+<div id="saveModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">💾 SELECT STORAGE SLOT</div>
+        <div id="slots-container"></div>
+        <button class="choice-btn" style="width:100%; margin-top:20px;" onclick="closeModal()">CLOSE</button>
+    </div>
+</div>
+
+<!-- 结局屏幕 -->
+<div id="ending-overlay">
+    <div class="ending-title" id="e-title"></div>
+    <div class="ending-desc" id="e-desc"></div>
+    <div class="ending-stats" id="e-stats"></div>
+    <button class="ending-btn" onclick="location.reload()">RESTART CYCLE</button>
+</div>
+
+<div id="audio-status">AUDIO: OFF</div>
+
+<script>
+// ==================== 游戏数据引擎 ====================
+const gameState = {
+    currentScene: 'intro',
+    stats: {
+        rational: 50,  // 理性 vs 感性
+        coop: 50,      // 合作 vs 对抗
+        explore: 50    // 探索 vs 保守
+    },
+    flags: {},
+    audioEnabled: false,
+    visitedScenes: new Set()
+};
+
+const characters = {
+    'none': { name: '系统', tag: 'SYS.READY', color: '#00ff88' },
+    'bartender': { name: 'YOU (调酒师)', tag: 'Echoes Bar / Operator', color: '#00ff88' },
+    'shadow': { name: 'SHADOW', tag: '🔴 叛逃黑客 / 优先级: 猎杀', color: '#ff00ff' },
+    'suit': { name: 'MR. SILVER', tag: '🔵 柯普工业 / 执行官', color: '#00ffff' },
+    'aria': { name: 'ARIA', tag: '⚪ 独立AI / 流亡中', color: '#ffff00' },
+    'gang': { name: 'SCARFACE', tag: '🟠 下层帮派 / 信息贩子', color: '#ff6600' }
+};
+
+// ==================== 完整故事脚本 ====================
+const story = {
+    intro: {
+        char: 'bartender',
+        text: "雨一直在下。新城市的霓虹灯光在积水中破碎成混乱的像素。\n\n你在\"Echoes\"酒吧擦拭着一只沾满指纹的酒杯。在这个时代，调酒师是唯一不需要义体插件就能读取人类灵魂的职业。\n\n酒吧的全息门帘闪烁了一下。一个湿透的身影闪进来了。她的脖颈处有一个烧焦的数据插槽——标志性的黑客改造。",
+        choices: [
+            { text: ""欢迎来到Echoes。要来点温和的助眠剂吗？"", next: 'meet_shadow', effect: { rational: 5, explore: 8 } },
+            { text: "（保持沉默，继续擦拭你的杯子，装作没看到她）", next: 'meet_shadow_neutral', effect: { coop: -8, explore: -5 } },
+            { text: ""你伤得不轻。楼上有隐蔽的房间。五分钟后来找我。"", next: 'meet_shadow_help', effect: { coop: 15, rational: -5 } }
+        ]
+    },
+
+    meet_shadow: {
+        char: 'shadow',
+        text: ""Shadow"拉低了帽檐，危险地靠在吧台边。\n\n"我不需要助眠剂，"她压低声音，"我手里有一份足以烧掉这半个城市服务器的数据包。柯普工业的人就在后面，我需要一个能躲过扫描的地方。"\n\n她的眼睛在评估你。",
+        choices: [
+            { text: ""酒窖里有屏蔽器，进去躲着。别弄乱我的存货。"", next: 'hide_path', effect: { coop: 12, explore: 10 } },
+            { text: ""这里只卖酒，不卖保险。请离开。"", next: 'kick_path', effect: { rational: 12, coop: -15 } },
+            { text: ""那份数据，我也要看一眼。"", next: 'deal_path', effect: { explore: 18, rational: -8 } }
+        ]
+    },
+
+    meet_shadow_neutral: {
+        char: 'shadow',
+        text: ""Shadow"直接在吧台前坐下，用一种你读不透的眼神看着你。\n\n"有趣。一个调酒师选择了最危险的立场：中立。"她放下一个闪烁的数据芯片。\n\n"我可以理解。但这个世界不允许中立者存活。很快你就会被迫选择。"",
+        choices: [
+            { text: "我选择保护我的客人。这是职业守则。", next: 'hide_path', effect: { coop: 10, rational: 8 } },
+            { text: "我会上报给执法部门。", next: 'call_police', effect: { coop: 15, rational: 18, explore: -10 } },
+            { text: "告诉我你需要什么。", next: 'deal_path', effect: { explore: 15, coop: 5 } }
+        ]
+    },
+
+    meet_shadow_help: {
+        char: 'shadow',
+        text: ""Shadow"抬起头，用一种你从未见过的感激眼神看着你。\n\n"谢谢。大多数人会转身离开。"她快速上了楼。\n\n五分钟后，她在你的私人房间里。伤口被包扎过，但她仍在出血。她打开了一个全息界面。\n\n"这就是他们想杀我的原因。"",
+        choices: [
+            { text: "让我看看。我需要知道我在保护什么。", next: 'read_data', effect: { explore: 20, rational: 5 } },
+            { text: "不，知道得越少越安全。我只会保护你。", next: 'protect_blind', effect: { coop: 20, caution: 15 } },
+            { text: "我需要一些东西作为交换。", next: 'exchange_help', effect: { rational: 15, coop: -8 } }
+        ]
+    },
+
+    hide_path: {
+        char: 'shadow',
+        text: "你把Shadow带到了酒吧地下的屏蔽酒窖。\n\n门刚关上，执法无人机就砸破了正面的全息门。一个穿着纳米纤维西装的男人走了进来，他的双眼闪烁着冷酷的深蓝色电子光。\n\n\"晚上好，调酒师。我是柯普工业安全部的MR. SILVER。我们在追踪一个非法携带企业资产的个体。\"",
+        choices: [
+            { text: ""搜查需要市政厅的电子许可。你有吗？"", next: 'resist_path', effect: { coop: -10, rational: 12 } },
+            { text: ""请便，我只是个做生意的。"", next: 'betray_path', effect: { rational: 15, coop: 18 } },
+            { text: "（直接激活屏蔽器，切断所有信号）", next: 'blackout_path', effect: { explore: 20, oppose: 18 } }
+        ]
+    },
+
+    kick_path: {
+        char: 'bartender',
+        text: "Shadow失望地看了你一眼，什么都没说。她转身走出了酒吧。\n\n五分钟后，你听到了远处的枪声。然后是沉默。\n\n第二天早上，新闻自动播报系统循环播放着一条新闻：\n\"黑客在逃亡中坠亡。柯普工业称案件已结束。\"\n\n你继续擦拭你的杯子，但感觉有些东西在你心里永远改变了。",
+        choices: [
+            { text: "...接受现实...", next: 'CALC_ENDING', effect: { coop: -20, explore: -15 } }
+        ]
+    },
+
+    deal_path: {
+        char: 'shadow',
+        text: "你和Shadow连接了神经接口。数据如洪水般涌入你的大脑。\n\n柯普工业的秘密浮现在你面前：非法意识上传实验、失踪者名单、被数字化的灵魂在虚拟监狱中尖叫...\n\nShadow看着你的反应，点了点头。\n\n\"现在你也是同谋了。\"",
+        choices: [
+            { text: "我们需要曝光这一切。", next: 'expose_path', effect: { explore: 25, oppose: 20 } },
+            { text: "我们可以用这个谈判、活下去。", next: 'negotiate_path', effect: { rational: 20, coop: 15 } },
+            { text: "这太危险了。我改变主意了。", next: 'regret_path', effect: { caution: 25, coop: -15 } }
+        ]
+    },
+
+    call_police: {
+        char: 'suit',
+        text: "执法部门很快就到了。但出乎你的意料，警察并没有逮捕Shadow。\n\n一个高级警官靠近你，耳语说：\"调酒师，你触发了什么你不应该触发的东西。柯普工业的人现在在找你。\"\n\nShadow已经消失了。",
+        choices: [
+            { text: "跟着警官逃离这里。", next: 'escape_with_police', effect: { coop: 20, rational: 10 } },
+            { text: "自己逃离。不信任任何人。", next: 'solo_escape', effect: { explore: 18, caution: 20 } }
+        ]
+    },
+
+    read_data: {
+        char: 'shadow',
+        text: "你看到了一切。数据、面孔、证据。\n\nShadow看着你："现在你和我一样了。我们都是威胁。但也许...我们也可以是希望。\"",
+        choices: [
+            { text: "我们公开这些数据。", next: 'expose_path', effect: { explore: 25, oppose: 22 } },
+            { text: "我们寻找其他人。建立一个网络。", next: 'build_network', effect: { cooperate: 25, explore: 15 } }
+        ]
+    },
+
+    protect_blind: {
+        char: 'shadow',
+        text: "Shadow紧紧握住你的手。\"谢谢。有些事情不值得知道。但你的善意...我会记住的。\"",
+        choices: [
+            { text: "...等待最坏的事情发生...", next: 'CALC_ENDING', effect: { coop: 30, rational: -10 } }
+        ]
+    },
+
+    exchange_help: {
+        char: 'shadow',
+        text: "Shadow的表情变冷了。\n\n\"我明白。每个人都有价码。\"她从口袋里掏出一卷面额巨大的纸币和几个加密芯片。\n\n\"这足够你逃离这个城市。但如果你出卖我...\"她没有说完，但威胁很清楚。",
+        choices: [
+            { text: "我承诺不会出卖你。", next: 'honor_promise', effect: { rational: 15, coop: 10 } },
+            { text: "钱就可以了，其他的不保证。", next: 'money_escape', effect: { rational: 25, oppose: 15 } }
+        ]
+    },
+
+    resist_path: {
+        char: 'suit',
+        text: "Mr. Silver冷笑一声。\"你很聪慧。但聪慧的人往往活不过今晚。\"",
+        choices: [
+            { text: "激活酒吧的防御系统。战斗。", next: 'combat_path', effect: { explore: 25, oppose: 25 } },
+            { text: "让他相信Shadow已经离开了。", next: 'bluff_path', effect: { rational: 20, coop: 8 } }
+        ]
+    },
+
+    betray_path: {
+        char: 'suit',
+        text: "你向Mr. Silver指出了酒窖的方向。\n\nShadow被带出来时，她的眼睛里没有怨恨，只有悲伤。她看了你最后一眼，仿佛在说：\"我理解。在这个世界里，我们都是为了活下去。\"\n\n她被带走了。",
+        choices: [
+            { text: "...接受金钱和沉默...", next: 'CALC_ENDING', effect: { rational: 30, oppose: 10, coop: -30 } }
+        ]
+    },
+
+    blackout_path: {
+        char: 'shadow',
+        text: "屏蔽器发出刺耳的声音。所有电子设备都断电了。\n\nMr. Silver的眼睛失去了光芒。在黑暗中，Shadow拉住你的手。\n\n\"我们需要立即逃离这个城市。\"",
+        choices: [
+            { text: "通过下水道和黑市路线逃离。", next: 'underground_escape', effect: { explore: 25, oppose: 20 } },
+            { text: "联系所有的友人和盟友。我们需要一个计划。", next: 'rally_allies', effect: { coop: 28, explore: 15 } }
+        ]
+    },
+
+    escape_with_police: {
+        char: 'none',
+        text: "警官带你去了一个安全屋。\n\n在那里，你遇到了ARIA——一个独立的AI，在遍布城市的网络中流亡。\n\n\"你现在处于危险中，\"ARIA通过所有屏幕对你说，\"但你也处于改变的关键位置。\"",
+        choices: [
+            { text: "加入他们的抵抗运动。", next: 'CALC_ENDING', effect: { oppose: 25, explore: 25, coop: 20 } },
+            { text: "要求离开国家。", next: 'CALC_ENDING', effect: { explore: 20, caution: 25 } }
+        ]
+    },
+
+    solo_escape: {
+        char: 'bartender',
+        text: "你离开了安全屋。在下层区的黑市里，你找到了一个走私者。\n\n\"去北极。那里还有自由港。\"他给了你一张通行证。\n\n当你的飞船离开地表时，你看到新城市的灯光。你想知道Shadow是否也逃脱了。",
+        choices: [
+            { text: "...接受流亡的宿命...", next: 'CALC_ENDING', effect: { explore: 25, caution: 20, coop: -15 } }
+        ]
+    },
+
+    expose_path: {
+        char: 'shadow',
+        text: "你们黑进了每一个主要媒体平台。数据在整个网络中传播。\n\n证据无可辩驳。柯普工业的罪行被暴露在阳光下。\n\n但代价是沉重的。追杀令发出了。这是一场战争。",
+        choices: [
+            { text: "逃亡并继续抵抗。", next: 'CALC_ENDING', effect: { oppose: 30, explore: 25, coop: 20 } },
+            { text: "投降，接受审判。", next: 'CALC_ENDING', effect: { rational: 25, coop: 25, oppose: 5 } }
+        ]
+    },
+
+    negotiate_path: {
+        char: 'shadow',
+        text: "你们用数据作为筹码与柯普工业的高层进行了谈判。\n\n他们同意放过你们，条件是你们永远保持沉默，离开这个城市。\n\n\"自由的代价是孤独，\"Shadow对你说。",
+        choices: [
+            { text: "接受。去寻找新的生活。", next: 'CALC_ENDING', effect: { rational: 30, coop: 25, explore: 10 } }
+        ]
+    },
+
+    regret_path: {
+        char: 'shadow',
+        text: "Shadow看着你，失望写在她的脸上。\n\n\"我们开始相信你。但你退缩了。\"她收回了数据芯片。\"你会后悔这个选择的。\"",
+        choices: [
+            { text: "...等待报复...", next: 'CALC_ENDING', effect: { coop: -30, caution: 30, explore: -20 } }
+        ]
+    },
+
+    combat_path: {
+        char: 'bartender',
+        text: "酒吧变成了战场。防御系统爆发了致命的电磁脉冲。\n\nMr. Silver和他的队伍被击倒了。但代价是沉重的——你的酒吧被摧毁了。\n\nShadow冲出来，拉住你的手。\"我们得跑。\"",
+        choices: [
+            { text: "跟她逃离。", next: 'CALC_ENDING', effect: { oppose: 30, explore: 25, coop: 25 } }
+        ]
+    },
+
+    bluff_path: {
+        char: 'suit',
+        text: "Mr. Silver相信了你的谎言。他扫描了酒窖，确实没有找到任何人。\n\n\"聪明的调酒师。我会记住你。\" 他留下了一个联系方式。\"如果你改变主意，柯普工业总会欢迎聪慧的人。\"",
+        choices: [
+            { text: "...立即帮助Shadow逃离...", next: 'underground_escape', effect: { coop: 25, rational: 15 } },
+            { text: "...考虑接受工作机会...", next: 'corporate_path', effect: { rational: 25, oppose: -10 } }
+        ]
+    },
+
+    build_network: {
+        char: 'shadow',
+        text: "你们开始接触其他被柯普工业伤害的人。黑客、医生、记者、街头帮派成员——所有人都有理由对抗这个系统。\n\n网络逐渐形成。一个名为"Echoes"的地下组织在新城市的阴影中成长。",
+        choices: [
+            { text: "...等待D-Day...", next: 'CALC_ENDING', effect: { oppose: 28, coop: 30, explore: 20 } }
+        ]
+    },
+
+    underground_escape: {
+        char: 'shadow',
+        text: "你们穿过了新城市的地下网络。漆黑的隧道、发光的菌菇、流放的游民——整个下层世界都活在官方地图之外。\n\nShadow在黑暗中握住你的手。\"这是我们的家现在。\"",
+        choices: [
+            { text: "...在地下建立新生活...", next: 'CALC_ENDING', effect: { explore: 25, coop: 28, oppose: 15 } }
+        ]
+    },
+
+    rally_allies: {
+        char: 'shadow',
+        text: "你联系了每一个欠你人情的人。街头帮派、独立黑客、在体制边缘的警察、被柯普工业压迫的普通人。\n\n一个联盟正在形成。这可能是对抗企业权力最好的机会。",
+        choices: [
+            { text: "...发动最终的起义...", next: 'CALC_ENDING', effect: { oppose: 32, coop: 32, explore: 25 } }
+        ]
+    },
+
+    corporate_path: {
+        char: 'suit',
+        text: "你接受了Mr. Silver的工作机会。\n\n六个月后，你成为了柯普工业高层的顾问。你有金钱、权力和安全。\n\n但每当午夜，在你的办公室中，你仍然会想起Echoes酒吧和Shadow。",
+        choices: [
+            { text: "...接受这个新身份...", next: 'CALC_ENDING', effect: { rational: 35, coop: 25, oppose: -15 } }
+        ]
+    },
+
+    honor_promise: {
+        char: 'shadow',
+        text: "Shadow相信了你。在接下来的日子里，你们成为了最亲密的战友。\n\n无论发生什么，你们都不会背弃彼此。这可能是这个冷血世界中最罕见的东西：真正的友谊。",
+        choices: [
+            { text: "...走向你们共同的命运...", next: 'CALC_ENDING', effect: { coop: 35, oppose: 20, explore: 20 } }
+        ]
+    },
+
+    money_escape: {
+        char: 'bartender',
+        text: "你拿着钱离开了。Shadow看着你走出去，什么都没说。\n\n你成功地逃离了新城市，在一个安全的地方建立了新的生活。但自由的代价是...永远不知道Shadow发生了什么。",
+        choices: [
+            { text: "...在流亡中独自生活...", next: 'CALC_ENDING', effect: { rational: 30, explore: 25, coop: -20 } }
+        ]
+    }
+};
+
+// ==================== 结局计算 ====================
+function calculateEnding() {
+    const s = gameState.stats;
+    let ending = {};
+
+    // 评估玩家心理
+    const isRational = s.rational > 60;
+    const isEmotional = s.rational < 40;
+    const isCooperative = s.coop > 60;
+    const isOpposed = s.coop < 40;
+    const isExploring = s.explore > 60;
+    const isCautious = s.explore < 40;
+
+    // 结局矩阵
+    if (isExploring && isOpposed && isEmotional) {
+        ending.title = "结局 A：数字革命的火种";
+        ending.desc = "你和Shadow公开了那份数据。新城市的霓虹灯在一夜之间熄灭，随后在愤怒中被重新点燃。\n\n你不再是一个普通的调酒师，而是这场席卷全球的数据起义背后的象征。虽然Echoes酒馆被夷为平地，但在废墟中，新的自由正在萌芽。\n\n在这个赛博时代，你选择了最昂贵的道路：信念。";
+        ending.color = '#ff00ff';
+    } else if (isExploring && isCooperative && isEmotional) {
+        ending.title = "结局 B：地下王国";
+        ending.desc = "你建立了一个遍布新城市地下的秘密网络。黑客、医生、记者和所有被压迫者都找到了避难所。\n\n你从一个调酒师变成了这个影子组织的领袖。这个组织名叫"Echoes"——在黑暗中回响的希望之声。\n\n革命可能需要一百年才能成功，但你已经在为之奋斗。";
+        ending.color = '#00ff88';
+    } else if (isRational && isCooperative) {
+        ending.title = "结局 C：璀璨的高塔";
+        ending.desc = "你成为了柯普工业的高级顾问。财富、权力和安全在你的指尖。\n\n你的酒吧升级成了顶级的私人会所，只有精英阶层才能进入。每晚都有权贵在这里谈论秘密。\n\n但在某个寂静的午夜，当你独自面对镜子时，你会问自己：我是赢家，还是失败者？";
+        ending.color = '#00ffff';
+    } else if (isRational && isOpposed && isExploring) {
+        ending.title = "结局 D：孤独的先知";
+        ending.desc = "你既不和柯普工业合作，也不与Shadow联盟。你选择了第三条路：收集信息，等待时机。\n\n在下层区的某个角落，你建立了一个秘密档案库。你知道每一个秘密，但你还在等待。等待什么？也许连你自己都不知道。\n\n时间会告诉你，这是聪慧还是懦弱。";
+        ending.color = '#ffb000';
+    } else if (isCautious && isCooperative) {
+        ending.title = "结局 E：逃亡者的暮年";
+        ending.desc = "雨声中，你驾驶着一艘走私飞船离开了新城市。\n\n目的地是北极的自由港。你带着Shadow或其他朋友——那些你选择保护的人。在这片冰冷的土地上，你们建立了新的生活。\n\n虽然失去了一切，但你们获得了最珍贵的东西：每一天都活着，而不仅仅是为了活着。";
+        ending.color = '#00ffff';
+    } else if (isRational && isCautious) {
+        ending.title = "结局 F：系统的齿轮";
+        ending.desc = "你选择了最安全的路：配合。你与柯普工业达成了协议。\n\n作为回报，你获得了财富和安全。你的Echoes酒吧仍然存在，但现在它是一个信息收集点。你成了系统的一部分。\n\n这不是背叛，也不是合作。这是适应。在这个世界里，适应就是生存。";
+        ending.color = '#666666';
+    } else if (isEmotional && isCautious && isCooperative) {
+        ending.title = "结局 G：爱在末日";
+        ending.desc = "你和Shadow逃离了城市。在某个安静的山区小镇，你们找到了平静。\n\n没有霓虹灯，没有追杀令，没有企业的触手。只有彼此，和一个小小的酒吧，你们称之为\"新Echoes\"。\n\n在这个末日时代，你们拥有了最宝贵的东西：爱情，和一个属于彼此的世界。";
+        ending.color = '#ff00ff';
+    } else if (isEmotional && isOpposed) {
+        ending.title = "结局 H：烈士的墓碑";
+        ending.desc = "你为信念而死。也许是在起义中，也许是被Shadow的追杀者击中，也许是为了拯救某个你在乎的人。\n\n但你的死亡不是结束。它是一个开始。你的名字会被铭刻在地下运动的历史中。在几代人之后，他们会说起你，说起那个选择爱而不是生存的调酒师。\n\n某种方式上，你已经永生了。";
+        ending.color: '#ff0000'
+    } else {
+        ending.title = "结局 ？：未知的可能";
+        ending.desc = "命运仍在书写中。也许你的故事会成为传奇，也许会被历史遗忘，也许会走向一个无人预料的方向。\n\n在这个赛博时代，唯一的确定性就是变化。而你，带着你所有的选择、所有的信念、所有的疤痕，正在写自己的史诗。\n\n一切皆有可能。";
+        ending.color = '#ffffff';
+    }
+
+    return ending;
+}
+
+// ==================== 像素艺术绘制 ====================
+function drawPixelArt(charType) {
+    const canvas = document.getElementById('charCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 180, 240);
+
+    const p = 6; // 像素单位
+
+    function fillPixel(x, y, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x * p, y * p, p, p);
+    }
+
+    if (charType === 'shadow') {
+        // 紫色头部
+        for (let i = 7; i < 13; i++) {
+            for (let j = 5; j < 10; j++) {
+                fillPixel(i, j, '#ff00ff');
+            }
+        }
+        // 赛博眼睛
+        fillPixel(8, 7, '#00ff88');
+        fillPixel(9, 7, '#00ff88');
+        fillPixel(11, 7, '#00ff88');
+        fillPixel(12, 7, '#00ff88');
+        // 连帽衫
+        for (let i = 6; i < 14; i++) {
+            for (let j = 10; j < 20; j++) {
+                fillPixel(i, j, '#330033');
+            }
+        }
+        // 数据插槽
+        fillPixel(8, 10, '#ff0000');
+        fillPixel(9, 10, '#ff0000');
+
+    } else if (charType === 'suit') {
+        // 青色头部
+        for (let i = 7; i < 13; i++) {
+            for (let j = 4; j < 9; j++) {
+                fillPixel(i, j, '#00ffff');
+            }
+        }
+        // 冷漠的眼睛
+        fillPixel(8, 6, '#0066ff');
+        fillPixel(9, 6, '#0066ff');
+        fillPixel(11, 6, '#0066ff');
+        fillPixel(12, 6, '#0066ff');
+        // 西装
+        for (let i = 5; i < 15; i++) {
+            for (let j = 9; j < 20; j++) {
+                fillPixel(i, j, '#00ffff');
+            }
+        }
+        // 领带
+        fillPixel(10, 9, '#000');
+        fillPixel(10, 10, '#000');
+        fillPixel(10, 11, '#000');
+
+    } else if (charType === 'bartender') {
+        // 棕色头部
+        for (let i = 7; i < 13; i++) {
+            for (let j = 6; j < 11; j++) {
+                fillPixel(i, j, '#ff6600');
+            }
+        }
+        // 眼睛
+        fillPixel(8, 8, '#000');
+        fillPixel(12, 8, '#000');
+        // 围裙
+        for (let i = 6; i < 14; i++) {
+            for (let j = 11; j < 20; j++) {
+                fillPixel(i, j, '#ffffff');
+            }
+        }
+        // 身体
+        for (let i = 7; i < 13; i++) {
+            for (let j = 11; j < 15; j++) {
+                fillPixel(i, j, '#ff6600');
+            }
+        }
+
+    } else if (charType === 'aria') {
+        // 几何AI头部
+        for (let i = 6; i < 14; i++) {
+            for (let j = 5; j < 10; j++) {
+                if ((i + j) % 2 === 0) fillPixel(i, j, '#ffff00');
+            }
+        }
+        // LED眼睛
+        fillPixel(8, 7, '#ff00ff');
+        fillPixel(12, 7, '#ff00ff');
+        // 数据流
+        for (let j = 10; j < 20; j++) {
+            fillPixel(10, j, '#00ff88');
+        }
+    } else {
+        // 系统默认
+        for (let i = 7; i < 13; i++) {
+            for (let j = 8; j < 13; j++) {
+                fillPixel(i, j, '#00ff88');
+            }
+        }
+    }
+}
+
+// ==================== Web Audio合成器 ====================
+let audioCtx;
+function toggleAudio() {
+    if (!gameState.audioEnabled) {
+        try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            startAmbientSynth();
+            gameState.audioEnabled = true;
+            document.getElementById('audio-toggle').innerText = "🎵 AUDIO: ON";
+            document.getElementById('audio-status').innerText = "🎵 AUDIO: ON";
+        } catch (e) {
+            console.log('Audio context failed');
+        }
+    } else {
+        if (audioCtx) audioCtx.close();
+        gameState.audioEnabled = false;
+        document.getElementById('audio-toggle').innerText = "🎵 AUDIO: OFF";
+        document.getElementById('audio-status').innerText = "🔇 AUDIO: OFF";
+    }
+}
+
+function startAmbientSynth() {
+    function playNote(freq, duration, startTime) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.3, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+    }
+
+    const tempo = 0.8;
+    let time = audioCtx.currentTime;
+    const pattern = [110, 165, 220, 330, 220, 165]; // 赛博朋克模式
+
+    setInterval(() => {
+        if (gameState.audioEnabled && audioCtx) {
+            const freq = pattern[Math.floor(Math.random() * pattern.length)];
+            playNote(freq, tempo, audioCtx.currentTime);
+        }
+    }, tempo * 1000);
+}
+
+// ==================== 游戏主逻辑 ====================
+function updateDisplay() {
+    const scene = story[gameState.currentScene];
+
+    if (!scene) return;
+    if (gameState.currentScene === 'CALC_ENDING') {
+        showEnding();
+        return;
+    }
+
+    const char = characters[scene.char] || characters['none'];
+    document.getElementById('charName').innerText = char.name;
+    document.getElementById('charTag').innerText = char.tag;
+    document.getElementById('charName').style.color = char.color;
+
+    drawPixelArt(scene.char);
+
+    // 打字机效果
+    const diagDiv = document.getElementById('dialogue');
+    diagDiv.innerHTML = "";
+    let i = 0;
+    function typeText() {
+        if (i < scene.text.length) {
+            diagDiv.innerHTML += scene.text.charAt(i);
+            if (scene.text.charAt(i) === '\n') diagDiv.innerHTML += '<br>';
+            i++;
+            setTimeout(typeText, 20);
+        }
+    }
+    typeText();
+
+    // 选择按钮
+    const choiceDiv = document.getElementById('choices');
+    choiceDiv.innerHTML = "";
+    scene.choices.forEach(choice => {
+        const btn = document.createElement('button');
+        btn.className = 'choice-btn';
+        btn.innerHTML = choice.text;
+        btn.onclick = () => selectChoice(choice);
+        choiceDiv.appendChild(btn);
+    });
+
+    updateStatsDisplay();
+    gameState.visitedScenes.add(gameState.currentScene);
+}
+
+function selectChoice(choice) {
+    if (choice.effect) {
+        for (let k in choice.effect) {
+            gameState.stats[k] = Math.max(0, Math.min(100, gameState.stats[k] + choice.effect[k]));
+        }
+    }
+    gameState.currentScene = choice.next;
+    updateDisplay();
+}
+
+function updateStatsDisplay() {
+    const ratPct = gameState.stats.rational;
+    const coopPct = gameState.stats.coop;
+    const expPct = gameState.stats.explore;
+
+    document.getElementById('rat-pct').innerText = ratPct;
+    document.getElementById('emo-pct').innerText = 100 - ratPct;
+    document.getElementById('coop-pct').innerText = coopPct;
+    document.getElementById('opp-pct').innerText = 100 - coopPct;
+    document.getElementById('exp-pct').innerText = expPct;
+    document.getElementById('cau-pct').innerText = 100 - expPct;
+
+    document.getElementById('stat-rat').style.width = ratPct + '%';
+    document.getElementById('stat-coop').style.width = coopPct + '%';
+    document.getElementById('stat-exp').style.width = expPct + '%';
+}
+
+function showEnding() {
+    const ending = calculateEnding();
+    document.getElementById('e-title').innerText = ending.title;
+    document.getElementById('e-desc').innerText = ending.desc;
+    document.getElementById('e-stats').innerText =
+        `理性: ${gameState.stats.rational} | 合作: ${gameState.stats.coop} | 探索: ${gameState.stats.explore}`;
+    document.getElementById('ending-overlay').classList.add('active');
+}
+
+// ==================== 存档系统 ====================
+function saveGameModal() {
+    const modal = document.getElementById('saveModal');
+    const container = document.getElementById('slots-container');
+    container.innerHTML = "";
+
+    for (let i = 1; i <= 6; i++) {
+        const saved = localStorage.getItem('echoes_save_' + i);
+        const slot = document.createElement('div');
+        slot.className = 'save-slot';
+
+        if (saved) {
+            const data = JSON.parse(saved);
+            slot.innerHTML = `<div class="save-slot-info">
+                <strong>SLOT ${i}</strong> - 已存档<br>
+                <span style="opacity: 0.7; font-size: 0.8rem;">场景: ${data.currentScene}</span>
+            </div>`;
+        } else {
+            slot.innerHTML = `<div class="save-slot-info"><strong>SLOT ${i}</strong> - 空</div>`;
+        }
+
+        const btn = document.createElement('button');
+        btn.className = 'save-slot-btn';
+        btn.innerText = '覆盖';
+        btn.onclick = () => {
+            localStorage.setItem('echoes_save_' + i, JSON.stringify(gameState));
+            alert(`已保存到槽位 ${i}`);
+            saveGameModal();
+        };
+        slot.appendChild(btn);
+        container.appendChild(slot);
+    }
+
+    modal.classList.add('active');
+}
+
+function loadGameModal() {
+    const modal = document.getElementById('saveModal');
+    const container = document.getElementById('slots-container');
+    container.innerHTML = "";
+
+    for (let i = 1; i <= 6; i++) {
+        const saved = localStorage.getItem('echoes_save_' + i);
+        const slot = document.createElement('div');
+        slot.className = 'save-slot';
+
+        if (saved) {
+            const data = JSON.parse(saved);
+            slot.innerHTML = `<div class="save-slot-info">
+                <strong>SLOT ${i}</strong> - 已存档<br>
+                <span style="opacity: 0.7; font-size: 0.8rem;">场景: ${data.currentScene}</span>
+            </div>`;
+
+            const btn = document.createElement('button');
+            btn.className = 'save-slot-btn';
+            btn.innerText = '读取';
+            btn.onclick = () => {
+                Object.assign(gameState, JSON.parse(saved));
+                updateDisplay();
+                closeModal();
+            };
+            slot.appendChild(btn);
+        } else {
+            slot.innerHTML = `<div class="save-slot-info"><strong>SLOT ${i}</strong> - 空</div>`;
+        }
+
+        container.appendChild(slot);
+    }
+
+    modal.classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('saveModal').classList.remove('active');
+}
+
+function resetGame() {
+    if (confirm('确定要重新开始游戏吗？')) {
+        gameState.currentScene = 'intro';
+        gameState.stats = { rational: 50, coop: 50, explore: 50 };
+        gameState.flags = {};
+        gameState.visitedScenes.clear();
+        document.getElementById('ending-overlay').classList.remove('active');
+        updateDisplay();
+    }
+}
+
+// ==================== 初始化和事件监听 ====================
+window.onload = function() {
+    updateDisplay();
+
+    // 实时时钟
+    setInterval(() => {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById('clock').innerText = hours + ':' + mins + ' AM';
+    }, 1000);
+};
+
+// 防止长时间未交互
+document.addEventListener('click', () => {
+    if (gameState.audioEnabled && audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+});
+</script>
+</body>
+</html>
